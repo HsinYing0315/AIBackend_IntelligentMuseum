@@ -1,13 +1,38 @@
 services:
   backend:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "5050:5050"
     environment:
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - WCS_URL=${WCS_URL}
-      - WCS_API_KEY=${WCS_API_KEY}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/google-cert.json
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       # key env variable add separatly
+    volumes:
+      - ./google-cert.json:/app/google-cert.json
+    depends_on:
+      - weaviate
+  weaviate:
+    command: [--host, 0.0.0.0, --port, "8080", --scheme, http]
+    image: cr.weaviate.io/semitechnologies/weaviate:1.33.0
+    ports:
+      - 8080:8080
+      - 50051:50051
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "none"
+      CLUSTER_HOSTNAME: "node1"
+    healthcheck: # 👈 建議加，避免 backend 搶跑
+      test:
+        ["CMD", "wget", "-qO-", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+volumes:
+  weaviate_data:

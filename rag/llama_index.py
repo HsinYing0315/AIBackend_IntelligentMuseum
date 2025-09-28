@@ -72,14 +72,15 @@ class LLaMAIndexRAG(RAGInterface):
         nodes = node_parser.get_nodes_from_documents(documents)
 
         # Build Index (VectorDB)
-        client = weaviate.connect_to_wcs(
-            cluster_url=os.getenv("WCS_URL"),
-            auth_credentials=weaviate.auth.AuthApiKey(os.getenv("WCS_API_KEY")),
+        client = weaviate.connect_to_local(
+            host="weaviate",  # 如果直接在主機跑，改成 "localhost"
+            port=8080,
+            grpc_port=50051,  # 如果沒有開 gRPC 可以省略
             headers={
-                "X-OpenAI-Api-Key": os.getenv("OPENAI_API_KEY")
+                "X-OpenAI-Api-Key": os.getenv('OPENAI_API_KEY')
             }
         )
-
+        
         # Construct vector store
         index_name = "Museum_index"
         vector_store = WeaviateVectorStore(
