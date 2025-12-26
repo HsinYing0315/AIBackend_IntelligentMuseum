@@ -4,6 +4,7 @@ __pycache__/
 
 # Environment files
 .env
+google-cert.json
 
 # OS generated files
 .DS_Store
