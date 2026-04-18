@@ -6,7 +6,6 @@ from google.cloud import translate_v2 as translate
 class Translate:
     def __init__(self):
         load_dotenv()
-        self.google_api_key = os.getenv('GOOGLE_API_KEY')
         self.client = translate.Client()
 
     def detect_language(self, text):

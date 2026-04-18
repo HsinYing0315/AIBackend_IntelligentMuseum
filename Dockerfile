@@ -1,5 +1,5 @@
 # Use an official Python runtime as a base image
-FROM python:3.10-slim
+FROM python:3.13.13-alpine3.23
 
 # Set the working directory to /app
 WORKDIR /app
@@ -13,14 +13,19 @@ WORKDIR /app
 # COPY requirements.txt ./
 COPY . .
 
+# Install build tools required for packages that compile C extensions
+RUN apk add --no-cache gcc g++ musl-dev
+
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Make port 5000 available to the world outside this container
 EXPOSE 5050
 
-# Run main.py when the container launches
-CMD ["python", "main.py"]
+
+CMD [ "python", "main.py" ]
+# Run with Gunicorn + eventlet for production WebSocket support
+# CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "--bind", "0.0.0.0:5050", "main:app"]
 
 # COMMAND
 # docker build -t aibackend .

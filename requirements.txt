@@ -1,16 +1,17 @@
-#ipykernel
-#ipywidgets
-#PyMuPDF
-#chromadb
-#sentence-transformers
 python-dotenv
-langchain
-langchain_community
+flasgger
 Flask
-gunicorn # heroku
+flask-socketio
+python-socketio[client]
+gunicorn
+gevent
+gevent-websocket
 openai
-llama-index
 weaviate-client==3.26.7
-llama-index-vector-stores-weaviate
+llama-index-core
+llama-index-readers-file
+llama-index-llms-openai
+llama-index-embeddings-openai
+llama-index-vector-stores-weaviate==0.1.5
 Babel
 google-cloud-translate
