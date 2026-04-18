@@ -12,12 +12,128 @@ api = Blueprint('api', __name__)
 with open('npc_role_config.json', 'r') as f:
     roles_config = json.load(f)
 
+# ─── Room Management REST Endpoints ───────────────────────────────
+
+from app.services.session_service import SessionManager
+
+@api.route('/rooms', methods=['GET'])
+def list_rooms():
+    """
+    List all active chat rooms.
+    ---
+    tags:
+      - Rooms
+    responses:
+      200:
+        description: A list of active room IDs.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rooms:
+                  type: array
+                  items:
+                    type: string
+    """
+    session_mgr = SessionManager()
+    rooms = session_mgr.list_rooms()
+    return jsonify({'rooms': rooms})
+
+@api.route('/rooms/<room_id>', methods=['GET'])
+def get_room(room_id):
+    """
+    Get info for a specific room.
+    ---
+    tags:
+      - Rooms
+    parameters:
+      - in: path
+        name: room_id
+        required: true
+        schema:
+          type: string
+    responses:
+      200:
+        description: Room details.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                room_id:
+                  type: string
+                npc_role:
+                  type: string
+                lang:
+                  type: string
+                users:
+                  type: array
+                  items:
+                    type: string
+                message_count:
+                  type: integer
+                created_at:
+                  type: string
+      404:
+        description: Room not found.
+    """
+    session_mgr = SessionManager()
+    room = session_mgr.get_room(room_id)
+    if room is None:
+        return jsonify({'error': f'Room {room_id} not found'}), 404
+    return jsonify({
+        'room_id': room_id,
+        'npc_role': room['npc_role'],
+        'lang': room['lang'],
+        'users': list(room['users'].values()),
+        'message_count': len(room['history']),
+        'created_at': room['created_at'],
+    })
+
 # AI助理
 @api.route('/generate', methods=['POST'])
 def generate():
     """
-    Endpoint to generate responses using the RAG model.
-    Expects a JSON payload with a 'query' field.
+    Generate a response using the RAG model (museum guide role).
+    ---
+    tags:
+      - AI
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - query
+            properties:
+              query:
+                type: string
+                example: 這把劍是哪個朝代的？
+              lang:
+                type: string
+                default: en
+                example: zh-TW
+              personality:
+                type: string
+                example: friendly
+    responses:
+      200:
+        description: Generated response.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                parsed_query:
+                  type: string
+                response:
+                  type: string
+                metadata:
+                  type: object
+                RAG_response_time:
+                  type: number
     """
     data = request.json
     query = data.get('query', '')
@@ -87,6 +203,54 @@ def generate():
 
 @api.route('/npc/ask', methods=['POST'])
 def npc_ask():
+    """
+    Ask an NPC a question using the RAG model.
+    ---
+    tags:
+      - AI
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - query
+            properties:
+              query:
+                type: string
+                example: 你是誰？
+              lang:
+                type: string
+                default: en
+                example: zh-TW
+              npc_role:
+                type: string
+                default: 博物館導覽員
+                example: 白起
+              personality:
+                type: string
+                example: serious
+              is_rag:
+                type: boolean
+                default: true
+    responses:
+      200:
+        description: NPC response.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                parsed_query:
+                  type: string
+                response:
+                  type: string
+                metadata:
+                  type: object
+                RAG_response_time:
+                  type: number
+    """
     data = request.json
     query = data.get('query', '')
     lang = data.get('lang', 'en')
@@ -157,6 +321,31 @@ def npc_ask():
 
 @api.route('/translate', methods=['POST'])
 def translate():
+    """
+    Translate text to a target language.
+    ---
+    tags:
+      - Utilities
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - text
+            properties:
+              text:
+                type: string
+                example: Hello, how are you?
+              target_language:
+                type: string
+                default: en
+                example: zh-TW
+    responses:
+      200:
+        description: Translated text.
+    """
     data = request.json
     text = data.get('text', '')
     target_language = data.get('target_language', 'en')
