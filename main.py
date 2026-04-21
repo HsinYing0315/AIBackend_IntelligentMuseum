@@ -1,13 +1,16 @@
 from gevent import monkey
 monkey.patch_all()
 
+import warnings
+warnings.filterwarnings('ignore', category=DeprecationWarning, module='gevent')
+warnings.filterwarnings('ignore', category=DeprecationWarning, module='authlib')
+
 from flask import Flask
 from flask_socketio import SocketIO
 from flasgger import Swagger
 from app.api import api
 from app.socket_events import register_socket_events
 import os
-import sys
 
 app = Flask(__name__)
 
@@ -39,4 +42,4 @@ if __name__ == "__main__":
     print(f" * Running on http://0.0.0.0:{port}  (async_mode=gevent, debug={debug_mode})", flush=True)
     print(f" * Press CTRL+C to quit", flush=True)
     # 0.0.0.0 make flask use all available network interfaces
-    socketio.run(app, host='0.0.0.0', port=port, debug=debug_mode)
+    socketio.run(app, host='0.0.0.0', port=port, debug=debug_mode, use_reloader=False)
