@@ -13,7 +13,17 @@ import json
 import logging
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
+
+# Configure handler to output logs to stdout
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        '%(asctime)s - [%(name)s] - %(levelname)s - %(message)s'
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 # Load roles configuration
 with open('npc_role_config.json', 'r') as f:
@@ -116,8 +126,8 @@ def register_socket_events(socketio):
             emit('room_left', {'room_id': room_id})
             logger.info(f"{user_name} left room {room_id}")
 
-    @socketio.on('send_message')
-    def handle_send_message(data):
+    @socketio.on('send_chat_message')
+    def handle_send_chat_message(data):
         """
         Send a message to the group. Triggers NPC response.
         
@@ -176,6 +186,7 @@ def register_socket_events(socketio):
         style = role_features.get("style", "正常")
         background = role_features.get("background", "")
         dynasty = role_features.get("dynasty", "現代")
+        game_prompt = role_features.get("game_prompt", None)
 
         # Prepend NPC info for better retrieval
         chi_query_with_context = f"({npc_role}-{dynasty}){chi_query}"
@@ -195,6 +206,7 @@ def register_socket_events(socketio):
             'personality': personality,
             'is_rag': is_rag,
             'conversation_history': conversation_history,
+            'game_prompt': game_prompt,
         }
 
         # 3. Call RAG to generate NPC response
