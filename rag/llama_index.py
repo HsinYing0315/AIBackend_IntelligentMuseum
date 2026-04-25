@@ -189,6 +189,26 @@ class LLaMAIndexRAG(RAGInterface):
 
                 "回答："
             )
+        elif query_info.get('game_prompt'):
+            if is_rag:
+                qa_prompt_str = (
+                    f"{query_info['game_prompt']}\n\n"
+                    "# 相關展品資訊（可作為提示依據，但仍須遵守上述規則）：\n"
+                    "---------------------\n"
+                    "{context_str}\n"
+                    "---------------------\n"
+                    "使用繁體中文。\n"
+                    "# 玩家的問題：\n"
+                    "{query_str}\n"
+                    "# 回答："
+                )
+            else:
+                qa_prompt_str = (
+                    f"{query_info['game_prompt']}\n\n"
+                    "使用繁體中文。\n"
+                    f"玩家的問題：{query_info['query']}\n"
+                    "回答："
+                )
         else:
             if is_rag:
                 qa_prompt_str = (
@@ -199,8 +219,6 @@ class LLaMAIndexRAG(RAGInterface):
                     f"你現在的身份是：{query_info['role']}\n"
                     f"你所身處的朝代是：{query_info['dynasty']} (請不要回答超過你朝代的問題或資訊)\n"
                     f"你的背景資訊是：{query_info['background']}\n"
-                    # f"你回覆的語調是：{query_info['tone']}\n"
-                    # f"你的回覆風格是：{query_info['style']}\n"
                     "\n"
                     "# 上下文資訊： \n"
                     f"以下是{query_info['dynasty']}朝代展覽一些武器的信息。\n"
@@ -224,15 +242,11 @@ class LLaMAIndexRAG(RAGInterface):
                     f"你現在的身份是：{query_info['role']}\n"
                     f"你所身處的朝代是：{query_info['dynasty']} (請不要回答超過你朝代的問題或資訊)\n"
                     f"你的背景資訊是：{query_info['background']}\n"
-                    # f"你回覆的語調是：{query_info['tone']}\n"
-                    # f"你的回覆風格是：{query_info['style']}\n"
 
                     "根據以上信息與你的個人資訊，請回答以下問題。\n"
                     "使用繁體中文、白話文。\n"
 
                     f"問題：{query_info['query']}\n"
-
-                    # f"請將你的回答翻譯成'{query_info['target_lang']}'\n"
 
                     "回答："
                 )
@@ -413,6 +427,32 @@ class LLaMAIndexRAG(RAGInterface):
 
                 "回答："
             )
+        elif query_info.get('game_prompt'):
+            if is_rag:
+                qa_prompt_str = (
+                    f"{query_info['game_prompt']}\n\n"
+                    "# 相關展品資訊（可作為提示依據，但仍須遵守上述規則）：\n"
+                    "---------------------\n"
+                    "{context_str}\n"
+                    "---------------------\n"
+                    "使用繁體中文。\n"
+
+                    f"{history_block}"
+
+                    "# 玩家的問題：\n"
+                    "{query_str}\n"
+                    "# 回答："
+                )
+            else:
+                qa_prompt_str = (
+                    f"{query_info['game_prompt']}\n\n"
+                    "使用繁體中文。\n"
+
+                    f"{history_block}"
+
+                    f"玩家的問題：{query_info['query']}\n"
+                    "回答："
+                )
         else:
             if is_rag:
                 qa_prompt_str = (
@@ -431,7 +471,7 @@ class LLaMAIndexRAG(RAGInterface):
                     f"{history_block}"
 
                     "# 上下文資訊： \n"
-                    f"以下是{query_info['dynasty']}朝代展覽一些武器的信息。\n"
+                    f"以下是{query_info['dynasty']}朝代展覽一些展品的信息。\n"
                     "---------------------\n"
                     "{context_str}\n"
                     "---------------------\n"
