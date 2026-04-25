@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>IntelligentMuseum — API Test</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #1e1e1e; color: #d4d4d4; padding: 16px; }
+    h2 { color: #9cdcfe; margin: 16px 0 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .panel { background: #252526; border: 1px solid #3c3c3c; border-radius: 6px; padding: 12px; flex: 1; min-width: 320px; }
+    label { font-size: 12px; color: #9cdcfe; display: block; margin-bottom: 2px; margin-top: 8px; }
+    input, select, textarea { width: 100%; padding: 5px 8px; background: #1e1e1e; border: 1px solid #3c3c3c; color: #d4d4d4; border-radius: 4px; font-family: monospace; font-size: 13px; }
+    textarea { height: 80px; resize: vertical; }
+    button { margin-top: 10px; padding: 6px 14px; background: #0e639c; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
+    button:hover { background: #1177bb; }
+    button.danger { background: #6c2020; }
+    button.danger:hover { background: #8c2a2a; }
+    #log { background: #1e1e1e; border: 1px solid #3c3c3c; border-radius: 4px; padding: 8px; height: 260px; overflow-y: auto; font-size: 12px; margin-top: 16px; }
+    .log-line { padding: 2px 0; border-bottom: 1px solid #2a2a2a; }
+    .log-ts { color: #666; }
+    .log-in  { color: #4ec9b0; }
+    .log-out { color: #ce9178; }
+    .log-sys { color: #dcdcaa; }
+    .log-err { color: #f44747; }
+    .status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #6c2020; margin-right: 6px; }
+    .status.connected { background: #4ec9b0; }
+    #room-badge { background: #0e639c; padding: 2px 8px; border-radius: 10px; font-size: 12px; display: none; }
+  </style>
+</head>
+<body>
+
+<h2>IntelligentMuseum API Test <span class="status" id="status-dot"></span> <span id="room-badge"></span></h2>
+
+<div class="row">
+
+  <!-- WebSocket Panel -->
+  <div class="panel">
+    <strong>WebSocket — Group Chat</strong>
+
+    <label>Server URL</label>
+    <input id="ws-url" value="http://localhost:5050">
+
+    <label>Your Name</label>
+    <input id="ws-name" value="TestUser">
+
+    <label>Room ID <small style="color:#666">(leave blank to auto-create)</small></label>
+    <input id="ws-room" placeholder="e.g. abc123">
+
+    <label>NPC Role</label>
+    <select id="ws-npc">
+      <option value="博物館導覽員">博物館導覽員 (Guide)</option>
+      <option value="古代中國官員">古代中國官員 (Ancient Official)</option>
+      <option value="白起">白起 (Bai Qi — Spring/Autumn)</option>
+      <option value="岳飛">岳飛 (Yue Fei — Song)</option>
+      <option value="劉綎">劉綎 (Liu Ting — Ming)</option>
+      <option value="宋徽宗(趙佶)">宋徽宗 (Emperor Huizong — N. Song)</option>
+      <option value="乾隆帝(愛新覺羅·弘曆)">乾隆帝 (Qianlong — Qing)</option>
+    </select>
+
+    <label>Language</label>
+    <select id="ws-lang">
+      <option value="zh-TW">zh-TW</option>
+      <option value="en">en</option>
+      <option value="ja">ja</option>
+    </select>
+
+    <label>Use RAG?</label>
+    <select id="ws-rag">
+      <option value="true">Yes</option>
+      <option value="false">No</option>
+    </select>
+
+    <button onclick="wsConnect()">Connect</button>
+    <button class="danger" onclick="wsDisconnect()">Disconnect</button>
+
+    <label>Message</label>
+    <input id="ws-msg" placeholder="Type a message…" onkeydown="if(event.key==='Enter') wsSend()">
+    <button onclick="wsSend()">Send Message</button>
+    <button onclick="wsGetHistory()">Get History</button>
+    <button onclick="wsLeave()">Leave Room</button>
+  </div>
+
+  <!-- REST Panel -->
+  <div class="panel">
+    <strong>REST API</strong>
+
+    <label>Server URL</label>
+    <input id="rest-url" value="http://localhost:5050">
+
+    <button onclick="restGetRooms()">GET /api/rooms</button>
+
+    <hr style="border-color:#333; margin-top:12px">
+
+    <label>POST /api/translate — Text</label>
+    <input id="tr-text" placeholder="Hello!">
+    <label>Target Language</label>
+    <input id="tr-lang" value="zh-TW">
+    <button onclick="restTranslate()">Translate</button>
+
+    <hr style="border-color:#333; margin-top:12px">
+
+    <label>POST /api/npc/ask — Query</label>
+    <input id="npc-query" placeholder="越王勾踐劍是什麼？">
+    <label>NPC Role</label>
+    <select id="npc-role">
+      <option value="博物館導覽員">博物館導覽員</option>
+      <option value="古代中國官員">古代中國官員</option>
+      <option value="白起">白起</option>
+      <option value="岳飛">岳飛</option>
+      <option value="劉綎">劉綎</option>
+      <option value="宋徽宗(趙佶)">宋徽宗(趙佶)</option>
+      <option value="乾隆帝(愛新覺羅·弘曆)">乾隆帝(愛新覺羅·弘曆)</option>
+    </select>
+    <label>Language</label>
+    <input id="npc-lang" value="zh-TW">
+    <label>Use RAG?</label>
+    <select id="npc-rag">
+      <option value="true">Yes</option>
+      <option value="false">No</option>
+    </select>
+    <button onclick="restNpcAsk()">Ask NPC</button>
+  </div>
+
+</div>
+
+<div id="log"></div>
+
+<script>
+  let socket = null;
+  let currentRoom = null;
+
+  // ── Logging ──────────────────────────────────────────────────────────────
+  function log(msg, cls = 'log-sys') {
+    const el = document.getElementById('log');
+    const ts = new Date().toLocaleTimeString();
+    el.innerHTML += `<div class="log-line"><span class="log-ts">[${ts}]</span> <span class="${cls}">${msg}</span></div>`;
+    el.scrollTop = el.scrollHeight;
+  }
+  function logIn(label, data)  { log(`← ${label}: ${JSON.stringify(data, null, 0)}`, 'log-in'); }
+  function logOut(label, data) { log(`→ ${label}: ${JSON.stringify(data, null, 0)}`, 'log-out'); }
+  function logErr(msg)         { log(`✖ ${msg}`, 'log-err'); }
+
+  // ── WebSocket ─────────────────────────────────────────────────────────────
+  function wsConnect() {
+    if (socket) socket.disconnect();
+    const url = document.getElementById('ws-url').value;
+    log(`Connecting to ${url}…`);
+    socket = io(url, { transports: ['websocket', 'polling'] });
+
+    socket.on('connect',        ()   => { setDot(true);  log('Socket connected  (sid: ' + socket.id + ')', 'log-in'); wsJoin(); });
+    socket.on('disconnect',     ()   => { setDot(false); log('Socket disconnected', 'log-err'); });
+    socket.on('connect_error',  (e)  => { setDot(false); logErr('connect_error: ' + e.message); });
+
+    socket.on('connected',      (d)  => logIn('connected', d));
+    socket.on('system_message', (d)  => logIn('system_message', d));
+    socket.on('room_joined',    (d)  => { logIn('room_joined', d); setRoom(d.room_id); });
+    socket.on('room_left',      (d)  => { logIn('room_left', d); setRoom(null); });
+    socket.on('user_message',   (d)  => logIn('user_message', d));
+    socket.on('npc_typing',     (d)  => logIn('npc_typing', d));
+    socket.on('npc_response',   (d)  => logIn('npc_response', d));
+    socket.on('chat_history',   (d)  => logIn('chat_history', d));
+    socket.on('error',          (d)  => logErr('server error: ' + JSON.stringify(d)));
+  }
+
+  function wsJoin() {
+    const data = {
+      user_name:   document.getElementById('ws-name').value,
+      room_id:     document.getElementById('ws-room').value || undefined,
+      npc_role:    document.getElementById('ws-npc').value,
+      lang:        document.getElementById('ws-lang').value,
+      is_rag:      document.getElementById('ws-rag').value === 'true',
+    };
+    logOut('join', data);
+    socket.emit('join', data);
+  }
+
+  function wsSend() {
+    const msg = document.getElementById('ws-msg').value.trim();
+    if (!msg) return;
+    const data = { message: msg };
+    logOut('send_message', data);
+    socket.emit('send_chat_message', data);
+    document.getElementById('ws-msg').value = '';
+  }
+
+  function wsGetHistory() {
+    logOut('get_history', {});
+    socket.emit('get_history', {});
+  }
+
+  function wsLeave() {
+    logOut('leave', {});
+    socket.emit('leave');
+  }
+
+  function wsDisconnect() {
+    if (socket) { socket.disconnect(); socket = null; }
+    setDot(false);
+    setRoom(null);
+  }
+
+  function setDot(on) {
+    document.getElementById('status-dot').className = 'status' + (on ? ' connected' : '');
+  }
+
+  function setRoom(id) {
+    currentRoom = id;
+    const b = document.getElementById('room-badge');
+    if (id) { b.textContent = 'room: ' + id; b.style.display = 'inline-block'; }
+    else { b.style.display = 'none'; }
+    if (id) document.getElementById('ws-room').value = id;
+  }
+
+  // ── REST ─────────────────────────────────────────────────────────────────
+  async function restCall(method, path, body) {
+    const base = document.getElementById('rest-url').value;
+    const url = base + path;
+    logOut(method + ' ' + path, body || '');
+    try {
+      const opts = { method, headers: { 'Content-Type': 'application/json' } };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(url, opts);
+      const data = await res.json();
+      logIn(method + ' ' + path + ' ' + res.status, data);
+    } catch (e) {
+      logErr(method + ' ' + path + ' failed: ' + e.message);
+    }
+  }
+
+  function restGetRooms()  { restCall('GET',  '/api/rooms'); }
+  function restTranslate() { restCall('POST', '/api/translate', { text: document.getElementById('tr-text').value, target_language: document.getElementById('tr-lang').value }); }
+  function restNpcAsk()    { restCall('POST', '/api/npc/ask', { query: document.getElementById('npc-query').value, npc_role: document.getElementById('npc-role').value, lang: document.getElementById('npc-lang').value, is_rag: document.getElementById('npc-rag').value === 'true' }); }
+</script>
+</body>
+</html>
